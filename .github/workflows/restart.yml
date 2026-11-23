@@ -1,22 +1,36 @@
 name: restart
+# GitHub's schedule alone fired once in 8.5 h overnight, so each run checks every 5 min for ~5h40m,
+# then starts its own successor. The schedule stays as a backup if the chain ever breaks.
 on:
   schedule: [{ cron: "*/10 * * * *" }]
   workflow_dispatch:
+concurrency: { group: restart, cancel-in-progress: false }
+permissions: { actions: write, contents: read }
 jobs:
   restart:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
-      - run: node restart.mjs
+      - name: check every 5 minutes
+        run: |
+          end=$((SECONDS + 340*60))
+          while [ $SECONDS -lt $end ]; do
+            node restart.mjs
+            sleep 300
+          done
         env:
           DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
           CLOUDDECK_COOKIE: ${{ secrets.CLOUDDECK_COOKIE }}
           CLOUDDECK_STATE: ${{ secrets.CLOUDDECK_STATE }}
           START_TEXT: ${{ vars.START_TEXT }}
+      - name: start the next run
+        if: success()
+        run: gh workflow run restart.yml -R ${{ github.repository }}
+        env: { GH_TOKEN: "${{ github.token }}" }
       - if: always()
         uses: actions/upload-artifact@v4
-        with: { name: shots, path: "*.png", retention-days: 2 }
+        with: { name: shots, path: "*.png", retention-days: 2, overwrite: true }
