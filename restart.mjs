@@ -24,8 +24,10 @@ if (/log ?in|sign ?in/i.test(page.url()) || (await page.getByRole("button", { na
   console.log("SIGNED OUT: refresh the CLOUDDECK_COOKIE secret")
   process.exitCode = 1
 } else {
-  const button = page.getByRole("button", { name: start }).first()
-  if (await button.count()) {
+  // Off: the dashboard's main button (where "Connect with Moonlight" sits) reads "Start". Never click while Running.
+  const running = await page.getByText(/^\s*running\s*$/i).count()
+  const button = page.getByRole("button", { name: start }).or(page.locator("button, a", { hasText: start })).first()
+  if (!running && (await button.count())) {
     await button.click()
     await page.waitForTimeout(5000)
     console.log("PC was off: clicked", await button.textContent().catch(() => "start"))
