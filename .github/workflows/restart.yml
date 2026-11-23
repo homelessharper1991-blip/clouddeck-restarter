@@ -1,0 +1,21 @@
+name: restart
+on:
+  schedule: [{ cron: "*/10 * * * *" }]
+  workflow_dispatch:
+jobs:
+  restart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: node restart.mjs
+        env:
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+          CLOUDDECK_COOKIE: ${{ secrets.CLOUDDECK_COOKIE }}
+          START_TEXT: ${{ vars.START_TEXT }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: shots, path: "*.png", retention-days: 2 }
