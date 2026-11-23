@@ -15,6 +15,7 @@ jobs:
         env:
           DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
           CLOUDDECK_COOKIE: ${{ secrets.CLOUDDECK_COOKIE }}
+          CLOUDDECK_STATE: ${{ secrets.CLOUDDECK_STATE }}
           START_TEXT: ${{ vars.START_TEXT }}
       - if: always()
         uses: actions/upload-artifact@v4

@@ -3,8 +3,9 @@ import { chromium } from "playwright"
 
 const url = process.env.DASHBOARD_URL
 const cookie = process.env.CLOUDDECK_COOKIE ?? ""
+const state = process.env.CLOUDDECK_STATE ? JSON.parse(Buffer.from(process.env.CLOUDDECK_STATE, "base64").toString()) : undefined
 const start = new RegExp(process.env.START_TEXT || "^\\s*(start|power on|turn on|boot|launch)\\b", "i")
-if (!url || !cookie) throw new Error("DASHBOARD_URL and CLOUDDECK_COOKIE secrets are required")
+if (!url || !(state || cookie)) throw new Error("DASHBOARD_URL and CLOUDDECK_STATE (or CLOUDDECK_COOKIE) secrets are required")
 
 const host = new URL(url).hostname
 const cookies = cookie.split(";").map((c) => c.trim()).filter(Boolean).map((c) => {
@@ -13,8 +14,8 @@ const cookies = cookie.split(";").map((c) => c.trim()).filter(Boolean).map((c) =
 })
 
 const browser = await chromium.launch()
-const ctx = await browser.newContext()
-await ctx.addCookies(cookies)
+const ctx = await browser.newContext(state ? { storageState: state } : {})
+if (!state) await ctx.addCookies(cookies)
 const page = await ctx.newPage()
 await page.goto(url, { waitUntil: "networkidle" })
 await page.screenshot({ path: "before.png", fullPage: true })
